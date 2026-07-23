@@ -14,6 +14,9 @@ function toggleModal(id) {
     const catSelect = document.getElementById('budget-category');
     catSelect.innerHTML = db.categories.despesa.map(c => `<option value="${c}">${c}</option>`).join('');
   }
+  if (id === 'recurring-modal') {
+    updateRecurringCategoryDropdown();
+  }
 }
 
 function toggleInstallmentOption() {
@@ -24,6 +27,12 @@ function toggleInstallmentOption() {
 function updateCategoryDropdown() {
   const type = document.getElementById('tx-type').value;
   const catSelect = document.getElementById('tx-category');
+  catSelect.innerHTML = db.categories[type].map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function updateRecurringCategoryDropdown() {
+  const type = document.getElementById('rec-type').value;
+  const catSelect = document.getElementById('rec-category');
   catSelect.innerHTML = db.categories[type].map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
@@ -113,6 +122,106 @@ function renderBudgets() {
       </div>
     `;
   }).join('');
+}
+
+// Recorrências (Assinaturas e Contas Fixas)
+function saveRecurring(e) {
+  e.preventDefault();
+  const newRec = {
+    id: Date.now(),
+    desc: document.getElementById('rec-desc').value,
+    type: document.getElementById('rec-type').value,
+    category: document.getElementById('rec-category').value,
+    amount: parseFloat(document.getElementById('rec-amount').value),
+    day: parseInt(document.getElementById('rec-day').value),
+    lastProcessedMonth: ''
+  };
+  db.recurring.push(newRec);
+  saveDB();
+  toggleModal('recurring-modal');
+  renderApp();
+}
+
+function deleteRecurring(id) {
+  if (confirm('Deseja excluir esta assinatura/conta fixa?')) {
+    db.recurring = db.recurring.filter(r => r.id !== id);
+    saveDB();
+    renderApp();
+  }
+}
+
+function renderRecurring() {
+  const container = document.getElementById('recurring-list');
+  if (db.recurring.length === 0) {
+    container.innerHTML = `<p class="text-xs text-slate-400 col-span-3">Nenhuma assinatura ou conta fixa cadastrada.</p>`;
+    return;
+  }
+
+  container.innerHTML = db.recurring.map(r => `
+    <div class="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center group">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-xs text-slate-800 dark:text-white">${r.desc}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300">${r.category}</span>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Vence todo dia <strong class="text-slate-700 dark:text-slate-200">${r.day}</strong></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-xs ${r.type === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">
+          R$ ${r.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+        </span>
+        <button onclick="deleteRecurring(${r.id})" class="text-slate-300 hover:text-rose-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function checkPendingRecurring() {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasPending = db.recurring.some(r => r.lastProcessedMonth !== currentMonth);
+  const banner = document.getElementById('recurring-alert-banner');
+  if (hasPending) {
+    banner.classList.remove('hidden');
+    banner.classList.add('flex');
+  } else {
+    banner.classList.add('hidden');
+    banner.classList.remove('flex');
+  }
+}
+
+function processRecurringTransactions() {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+
+  let count = 0;
+  db.recurring.forEach(r => {
+    if (r.lastProcessedMonth !== currentMonth) {
+      const dayFormatted = String(r.day).padStart(2, '0');
+      const txDate = `${year}-${month}-${dayFormatted}`;
+
+      db.transactions.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        desc: `${r.desc} (Fixa)`,
+        type: r.type,
+        category: r.category,
+        amount: r.amount,
+        date: txDate
+      });
+
+      r.lastProcessedMonth = currentMonth;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    saveDB();
+    renderApp();
+    alert(`${count} lançamento(s) recorrente(s) foram gerados com sucesso para este mês!`);
+  }
 }
 
 function saveGoal(e) {
