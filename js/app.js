@@ -28,4 +28,6 @@ function renderApp() {
   renderCharts();
   renderGoals();
   renderBudgets();
+  renderRecurring();
+  checkPendingRecurring();
 }
