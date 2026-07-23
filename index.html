@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão Financeira & Investimentos</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-indigo-600 rounded-lg text-white">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+        </div>
+        <span class="font-bold text-lg tracking-tight">FinControl <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">PRO</span></span>
+      </div>
+      <button onclick="toggleModal('config-modal')" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 border border-slate-700">
+        <i class="fa-solid fa-gear"></i> Configurações
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-slate-500 text-sm font-medium mb-1">
+          <span>Saldo Total</span>
+          <i class="fa-solid fa-wallet text-slate-400"></i>
+        </div>
+        <div id="kpi-saldo" class="text-2xl font-bold text-slate-900">R$ 0,00</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-emerald-600 text-sm font-medium mb-1">
+          <span>Receitas</span>
+          <i class="fa-solid fa-arrow-up-right-dots"></i>
+        </div>
+        <div id="kpi-receita" class="text-2xl font-bold text-emerald-600">R$ 0,00</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-rose-600 text-sm font-medium mb-1">
+          <span>Despesas</span>
+          <i class="fa-solid fa-arrow-down-left-dots"></i>
+        </div>
+        <div id="kpi-despesa" class="text-2xl font-bold text-rose-600">R$ 0,00</div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between text-indigo-600 text-sm font-medium mb-1">
+          <span>Investimentos</span>
+          <i class="fa-solid fa-piggy-bank"></i>
+        </div>
+        <div id="kpi-investimento" class="text-2xl font-bold text-indigo-600">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
+        <h3 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">Fluxo Mensal</h3>
+        <div class="h-64 relative">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">Distribuição</h3>
+        <div class="h-64 relative">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Table & Actions -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Toolbar -->
+      <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div class="flex flex-wrap gap-2 items-center">
+          <select id="filter-type" onchange="renderApp()" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">Todos os Tipos</option>
+            <option value="receita">Receitas</option>
+            <option value="despesa">Despesas</option>
+            <option value="investimento">Investimentos</option>
+          </select>
+          <input type="month" id="filter-month" onchange="renderApp()" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <button onclick="openFormModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-sm">
+          <i class="fa-solid fa-plus"></i> Novo Lançamento
+        </button>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="py-3.5 px-4 font-semibold">Data</th>
+              <th class="py-3.5 px-4 font-semibold">Descrição</th>
+              <th class="py-3.5 px-4 font-semibold">Tipo</th>
+              <th class="py-3.5 px-4 font-semibold">Categoria</th>
+              <th class="py-3.5 px-4 font-semibold text-right">Valor</th>
+              <th class="py-3.5 px-4 font-semibold text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-list" class="divide-y divide-slate-100">
+            <!-- Renderizado via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Form Lançamento -->
+  <div id="form-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="modal-title" class="font-bold text-slate-800">Novo Lançamento</h3>
+        <button onclick="toggleModal('form-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="tx-form" onsubmit="saveTransaction(event)" class="p-6 space-y-4">
+        <input type="hidden" id="tx-id">
+        
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Descrição</label>
+          <input type="text" id="tx-desc" required placeholder="Ex: Salário, Tesouro Direto, Mercado" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Tipo</label>
+            <select id="tx-type" onchange="updateCategoryDropdown()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="receita">Receita</option>
+              <option value="despesa">Despesa</option>
+              <option value="investimento">Investimento</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Categoria</label>
+            <select id="tx-category" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Valor (R$)</label>
+            <input type="number" step="0.01" id="tx-amount" required placeholder="0,00" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Data</label>
+            <input type="date" id="tx-date" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div class="pt-4 flex gap-3 justify-end border-t border-slate-100">
+          <button type="button" onclick="toggleModal('form-modal')" class="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-medium transition-all">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Configurações -->
+  <div id="config-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-800">Configuração de Categorias</h3>
+        <button onclick="toggleModal('config-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-2">
+          <select id="cfg-type" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white">
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+            <option value="investimento">Investimento</option>
+          </select>
+          <input type="text" id="cfg-name" placeholder="Nova categoria..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button onclick="addCategory()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Adicionar</button>
+        </div>
+
+        <div class="border border-slate-200 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2" id="cfg-list">
+          <!-- Categorias renderizadas via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State Management
+    let db = JSON.parse(localStorage.getItem('fin_db')) || {
+      transactions: [],
+      categories: {
+        receita: ['Salário', 'Freelance', 'Rendimentos'],
+        despesa: ['Alimentação', 'Moradia', 'Lazer', 'Transporte', 'Saúde'],
+        investimento: ['Ações', 'FIIs', 'Renda Fixa', 'Cripto']
+      }
+    };
+
+    let barChartInst = null;
+    let pieChartInst = null;
+
+    // Core Init
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('tx-date').valueAsDate = new Date();
+      initCharts();
+      renderApp();
+    });
+
+    function saveDB() {
+      localStorage.setItem('fin_db', JSON.stringify(db));
+    }
+
+    function toggleModal(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('hidden');
+      el.classList.toggle('flex');
+      if (id === 'config-modal') renderConfigCategories();
+    }
+
+    // Category Management
+    function updateCategoryDropdown() {
+      const type = document.getElementById('tx-type').value;
+      const catSelect = document.getElementById('tx-category');
+      catSelect.innerHTML = db.categories[type].map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function addCategory() {
+      const type = document.getElementById('cfg-type').value;
+      const input = document.getElementById('cfg-name');
+      const val = input.value.trim();
+
+      if (val && !db.categories[type].includes(val)) {
+        db.categories[type].push(val);
+        saveDB();
+        input.value = '';
+        renderConfigCategories();
+        updateCategoryDropdown();
+      }
+    }
+
+    function removeCategory(type, name) {
+      db.categories[type] = db.categories[type].filter(c => c !== name);
+      saveDB();
+      renderConfigCategories();
+      updateCategoryDropdown();
+    }
+
+    function renderConfigCategories() {
+      const list = document.getElementById('cfg-list');
+      let html = '';
+      ['receita', 'despesa', 'investimento'].forEach(type => {
+        db.categories[type].forEach(cat => {
+          html += `
+            <div class="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-100 text-sm">
+              <span class="capitalize text-slate-600"><strong class="font-semibold text-slate-800">${type}:</strong> ${cat}</span>
+              <button onclick="removeCategory('${type}', '${cat}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          `;
+        });
+      });
+      list.innerHTML = html;
+    }
+
+    // Transaction Management (CRUD)
+    function openFormModal(id = null) {
+      const modal = document.getElementById('form-modal');
+      const form = document.getElementById('tx-form');
+      form.reset();
+      
+      if (id) {
+        const tx = db.transactions.find(t => t.id === id);
+        document.getElementById('tx-id').value = tx.id;
+        document.getElementById('tx-desc').value = tx.desc;
+        document.getElementById('tx-type').value = tx.type;
+        updateCategoryDropdown();
+        document.getElementById('tx-category').value = tx.category;
+        document.getElementById('tx-amount').value = tx.amount;
+        document.getElementById('tx-date').value = tx.date;
+        document.getElementById('modal-title').innerText = 'Editar Lançamento';
+      } else {
+        document.getElementById('tx-id').value = '';
+        document.getElementById('tx-date').valueAsDate = new Date();
+        document.getElementById('modal-title').innerText = 'Novo Lançamento';
+        updateCategoryDropdown();
+      }
+      
+      toggleModal('form-modal');
+    }
+
+    function saveTransaction(e) {
+      e.preventDefault();
+      const id = document.getElementById('tx-id').value;
+      const txData = {
+        id: id ? parseInt(id) : Date.now(),
+        desc: document.getElementById('tx-desc').value,
+        type: document.getElementById('tx-type').value,
+        category: document.getElementById('tx-category').value,
+        amount: parseFloat(document.getElementById('tx-amount').value),
+        date: document.getElementById('tx-date').value
+      };
+
+      if (id) {
+        const index = db.transactions.findIndex(t => t.id === parseInt(id));
+        db.transactions[index] = txData;
+      } else {
+        db.transactions.push(txData);
+      }
+
+      saveDB();
+      toggleModal('form-modal');
+      renderApp();
+    }
+
+    function deleteTransaction(id) {
+      if (confirm('Deseja realmente excluir este registro?')) {
+        db.transactions = db.transactions.filter(t => t.id !== id);
+        saveDB();
+        renderApp();
+      }
+    }
+
+    // Rendering & Calculations
+    function getFilteredData() {
+      const typeFilter = document.getElementById('filter-type').value;
+      const monthFilter = document.getElementById('filter-month').value;
+
+      return db.transactions.filter(t => {
+        const matchType = typeFilter === 'all' || t.type === typeFilter;
+        const matchMonth = !monthFilter || t.date.startsWith(monthFilter);
+        return matchType && matchMonth;
+      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    function renderApp() {
+      const filtered = getFilteredData();
+      renderTable(filtered);
+      renderKPIs();
+      renderCharts();
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('transactions-list');
+      
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Nenhum registro encontrado.</td></tr>`;
+        return;
+      }
+
+      const badgeStyles = {
+        receita: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        despesa: 'bg-rose-50 text-rose-700 border-rose-200',
+        investimento: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+      };
+
+      tbody.innerHTML = data.map(t => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-3 px-4 font-mono text-xs">${t.date.split('-').reverse().join('/')}</td>
+          <td class="py-3 px-4 font-medium text-slate-800">${t.desc}</td>
+          <td class="py-3 px-4">
+            <span class="text-xs px-2.5 py-0.5 rounded-full border font-medium ${badgeStyles[t.type]} capitalize">
+              ${t.type}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-slate-500">${t.category}</td>
+          <td class="py-3 px-4 text-right font-semibold ${t.type === 'despesa' ? 'text-rose-600' : t.type === 'receita' ? 'text-emerald-600' : 'text-indigo-600'}">
+            ${t.type === 'despesa' ? '-' : '+'} R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+          </td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="openFormModal(${t.id})" class="text-slate-400 hover:text-indigo-600 mx-1"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="deleteTransaction(${t.id})" class="text-slate-400 hover:text-rose-600 mx-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderKPIs() {
+      const totals = db.transactions.reduce((acc, t) => {
+        acc[t.type] += t.amount;
+        return acc;
+      }, { receita: 0, despesa: 0, investimento: 0 });
+
+      const saldo = totals.receita - totals.despesa - totals.investimento;
+
+      document.getElementById('kpi-saldo').innerText = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('kpi-receita').innerText = `R$ ${totals.receita.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('kpi-despesa').innerText = `R$ ${totals.despesa.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('kpi-investimento').innerText = `R$ ${totals.investimento.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    }
+
+    // Chart.js Integration
+    function initCharts() {
+      const ctxBar = document.getElementById('barChart').getContext('2d');
+      barChartInst = new Chart(ctxBar, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+
+      const ctxPie = document.getElementById('pieChart').getContext('2d');
+      pieChartInst = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    function renderCharts() {
+      // Bar Chart: Aggregated by Type
+      const totals = db.transactions.reduce((acc, t) => {
+        acc[t.type] += t.amount;
+        return acc;
+      }, { receita: 0, despesa: 0, investimento: 0 });
+
+      barChartInst.data = {
+        labels: ['Receitas', 'Despesas', 'Investimentos'],
+        datasets: [{
+          data: [totals.receita, totals.despesa, totals.investimento],
+          backgroundColor: ['#10b981', '#f43f5e', '#6366f1'],
+          borderRadius: 6
+        }]
+      };
+      barChartInst.options.plugins.legend.display = false;
+      barChartInst.update();
+
+      // Pie Chart: Expenses/Investments by Category
+      const catTotals = {};
+      db.transactions.filter(t => t.type !== 'receita').forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+      });
+
+      pieChartInst.data = {
+        labels: Object.keys(catTotals),
+        datasets: [{
+          data: Object.values(catTotals),
+          backgroundColor: ['#6366f1', '#ec4899', '#8b5cf6', '#f59e0b', '#10b981', '#06b6d4', '#64748b']
+        }]
+      };
+      pieChartInst.update();
+    }
+  </script>
+</body>
+</html>
