@@ -3,6 +3,10 @@ let db = JSON.parse(localStorage.getItem('fin_db')) || {
   transactions: [],
   goals: [{ id: 1, title: 'Reserva de Emergência', current: 3000, target: 10000 }],
   budgets: { 'Alimentação': 800, 'Lazer': 400 },
+  recurring: [
+    { id: 1, desc: 'Netflix', type: 'despesa', category: 'Lazer', amount: 55.90, day: 10, lastProcessedMonth: '' },
+    { id: 2, desc: 'Aluguel', type: 'despesa', category: 'Moradia', amount: 1500.00, day: 5, lastProcessedMonth: '' }
+  ],
   categories: {
     receita: ['Salário', 'Freelance', 'Rendimentos'],
     despesa: ['Alimentação', 'Moradia', 'Lazer', 'Transporte', 'Saúde'],
@@ -12,6 +16,7 @@ let db = JSON.parse(localStorage.getItem('fin_db')) || {
 
 if (!db.budgets) db.budgets = {};
 if (!db.goals) db.goals = [];
+if (!db.recurring) db.recurring = [];
 
 function saveDB() {
   localStorage.setItem('fin_db', JSON.stringify(db));
@@ -39,6 +44,7 @@ function importBackup(event) {
         db = importedData;
         if (!db.goals) db.goals = [];
         if (!db.budgets) db.budgets = {};
+        if (!db.recurring) db.recurring = [];
         saveDB();
         renderApp();
         alert('Backup restaurado com sucesso!');
