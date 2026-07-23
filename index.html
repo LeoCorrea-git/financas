@@ -26,9 +26,21 @@
         </div>
         <span class="font-bold text-lg tracking-tight">FinControl <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">PRO</span></span>
       </div>
-      <button onclick="toggleModal('config-modal')" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 border border-slate-700">
-        <i class="fa-solid fa-gear"></i> Configurações
-      </button>
+      
+      <!-- Botões de Ação do Header -->
+      <div class="flex items-center gap-2">
+        <button onclick="exportBackup()" title="Exportar dados para arquivo" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 border border-slate-700">
+          <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Exportar</span>
+        </button>
+        <button onclick="document.getElementById('import-file').click()" title="Importar dados de arquivo" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 border border-slate-700">
+          <i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Importar</span>
+        </button>
+        <input type="file" id="import-file" class="hidden" accept=".json" onchange="importBackup(event)">
+        
+        <button onclick="toggleModal('config-modal')" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 border border-slate-700">
+          <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">Configurações</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -221,6 +233,40 @@
       localStorage.setItem('fin_db', JSON.stringify(db));
     }
 
+    // Export/Import Backup Functions
+    function exportBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `backup_financas_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (importedData.transactions && importedData.categories) {
+            db = importedData;
+            saveDB();
+            renderApp();
+            alert('Backup restaurado com sucesso!');
+          } else {
+            alert('Arquivo de backup inválido.');
+          }
+        } catch (err) {
+          alert('Erro ao carregar o arquivo de backup.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
     function toggleModal(id) {
       const el = document.getElementById(id);
       el.classList.toggle('hidden');
@@ -274,7 +320,6 @@
 
     // Transaction Management (CRUD)
     function openFormModal(id = null) {
-      const modal = document.getElementById('form-modal');
       const form = document.getElementById('tx-form');
       form.reset();
       
@@ -416,7 +461,6 @@
     }
 
     function renderCharts() {
-      // Bar Chart: Aggregated by Type
       const totals = db.transactions.reduce((acc, t) => {
         acc[t.type] += t.amount;
         return acc;
@@ -433,7 +477,6 @@
       barChartInst.options.plugins.legend.display = false;
       barChartInst.update();
 
-      // Pie Chart: Expenses/Investments by Category
       const catTotals = {};
       db.transactions.filter(t => t.type !== 'receita').forEach(t => {
         catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
